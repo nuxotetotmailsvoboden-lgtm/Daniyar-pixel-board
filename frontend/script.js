@@ -9,6 +9,7 @@ let isSelecting = false;
 let uploadedImage = null;
 let originalImgWidth = 0, originalImgHeight = 0;
 let maxAllowedPixels = 0;
+let currentScale = 1; // для отрисовки
 
 // DOM
 const infoPanel = document.getElementById('infoPanel');
@@ -70,13 +71,12 @@ async function fetchBoard() {
     const data = await res.json();
     ads = data.map(ad => ({
       ...ad,
-      image_url: ad.image_data, // сервер отдаёт base64
+      image_url: ad.image_data,
       target_url: ad.target_url,
       title: ad.title || 'Реклама'
     }));
   } catch (e) {
-    console.warn('Не удалось загрузить данные с сервера, используем демо:', e);
-    // если сервер недоступен, можно оставить пустой массив
+    console.warn('Не удалось загрузить данные с сервера, используем пустой холст:', e);
     ads = [];
   }
   updateProgress();
@@ -86,10 +86,17 @@ async function fetchBoard() {
 function drawBoard() {
   ctx.clearRect(0, 0, BOARD_SIZE, BOARD_SIZE);
 
-  // Сетка
-  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
-  ctx.lineWidth = 1;
-  for (let i = 0; i <= BOARD_SIZE; i += 50) {
+  // --- ДИНАМИЧЕСКАЯ СЕТКА (в зависимости от scale) ---
+  let gridStep;
+  if (currentScale < 2) gridStep = 50;
+  else if (currentScale < 4) gridStep = 10;
+  else if (currentScale < 8) gridStep = 5;
+  else gridStep = 1;
+
+  // Рисуем сетку (светло-серые линии)
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i <= BOARD_SIZE; i += gridStep) {
     ctx.beginPath();
     ctx.moveTo(i, 0);
     ctx.lineTo(i, BOARD_SIZE);
@@ -100,9 +107,15 @@ function drawBoard() {
     ctx.stroke();
   }
 
-  // Рисуем рекламные блоки
+  // Если шаг сетки = 1, рисуем дополнительно очень тонкие линии между пикселями (эффект пикселизации)
+  if (gridStep === 1) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 0.2;
+    // можно не рисовать, т.к. шаг 1 уже даёт линии через каждый пиксель
+  }
+
+  // --- Рисуем рекламные блоки ---
   ads.forEach(ad => {
-    // Для отображения используем image_data (base64), загружаем в кеш при необходимости
     let img = null;
     if (ad.image_url && !ad._img) {
       const imgObj = new Image();
@@ -115,7 +128,7 @@ function drawBoard() {
     drawAdBlock(ctx, ad.x, ad.y, ad.width, ad.height, img, ad.title, ad.target_url);
   });
 
-  // Рисуем выделение пользователя
+  // --- Выделение пользователя ---
   if (selectedArea) {
     const x = Math.min(selectedArea.startX, selectedArea.endX);
     const y = Math.min(selectedArea.startY, selectedArea.endY);
@@ -366,7 +379,7 @@ document.getElementById('applySizeBtn').addEventListener('click', () => {
   drawBoard();
 });
 
-// --- КУПИТЬ (отправка на сервер) ---
+// --- КУПИТЬ ---
 document.getElementById('buyBtn').addEventListener('click', async () => {
   if (!selectedArea) return;
   const x = Math.min(selectedArea.startX, selectedArea.endX);
@@ -391,10 +404,8 @@ document.getElementById('buyBtn').addEventListener('click', async () => {
     return;
   }
 
-  // Конвертируем изображение в base64 (data URL)
-  const imageData = uploadedImage.src; // уже data URL
+  const imageData = uploadedImage.src;
 
-  // Отправляем на сервер
   try {
     const response = await fetch('http://localhost:3000/api/ads', {
       method: 'POST',
@@ -406,7 +417,7 @@ document.getElementById('buyBtn').addEventListener('click', async () => {
         height: clampedH,
         image_data: imageData,
         target_url: targetUrl,
-        title: 'Моя реклама' // позже дадим ввести
+        title: 'Моя реклама'
       })
     });
 
@@ -421,14 +432,12 @@ document.getElementById('buyBtn').addEventListener('click', async () => {
     }
 
     const newAd = await response.json();
-    // Добавляем в локальный массив
     const adToShow = {
       ...newAd,
       image_url: newAd.image_data,
       _img: uploadedImage
     };
     ads.push(adToShow);
-    // Сброс
     selectedArea = null;
     uploadedImage = null;
     document.getElementById('imageInfo').classList.add('hidden');
@@ -451,20 +460,27 @@ document.getElementById('cancelBtn').addEventListener('click', () => {
   drawBoard();
 });
 
-// --- ZOOM ---
+// --- ZOOM (обновляем currentScale и перерисовываем) ---
 let scale = 1;
 document.getElementById('zoomIn').addEventListener('click', () => {
   scale *= 1.1;
+  if (scale > 16) scale = 16; // ограничим, чтобы не слишком мелко
   canvas.style.transform = `scale(${scale})`;
+  currentScale = scale;
+  drawBoard(); // перерисовать с новым шагом сетки
 });
 document.getElementById('zoomOut').addEventListener('click', () => {
   scale /= 1.1;
   if (scale < 0.3) scale = 0.3;
   canvas.style.transform = `scale(${scale})`;
+  currentScale = scale;
+  drawBoard();
 });
 document.getElementById('resetView').addEventListener('click', () => {
   scale = 1;
   canvas.style.transform = 'scale(1)';
+  currentScale = 1;
+  drawBoard();
 });
 
 // --- ПРОГРЕСС ---
