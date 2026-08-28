@@ -27,7 +27,7 @@
     </div>
   </section>
 
-  <!-- Контейнер с канвасом и управлением -->
+  <!-- Контейнер -->
   <section class="board-container">
     <div class="controls">
       <button id="zoomIn">➕</button>
@@ -49,7 +49,7 @@
       <canvas id="pixelCanvas" width="1000" height="1000"></canvas>
     </div>
 
-    <!-- Панель управления выделением (фиксированная внизу) -->
+    <!-- Панель управления (фиксированная внизу) -->
     <div id="infoPanel" class="info-panel hidden">
       <div class="panel-row">
         <div class="panel-col">
@@ -64,6 +64,8 @@
           <label>Высота: <input type="number" id="editHeight" min="10" step="1" /></label>
           <button id="applySizeBtn" class="btn-small">Применить</button>
           <span id="sizeWarning" style="color:#ff6b6b; display:none;">Превышен лимит 3x!</span>
+          <br />
+          <label>Ссылка (URL): <input type="url" id="adUrl" placeholder="https://example.com" style="width:200px; background:#222; border:1px solid #444; color:#fff; padding:4px; border-radius:4px;" /></label>
         </div>
       </div>
       <div class="panel-actions">
