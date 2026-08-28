@@ -8,6 +8,7 @@ body {
   background: #0a0a0f;
   color: #fff;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  padding-bottom: 120px; /* чтобы панель не перекрывала контент */
 }
 
 header {
@@ -35,7 +36,7 @@ nav a:hover {
 
 .hero {
   text-align: center;
-  padding: 40px 20px;
+  padding: 40px 20px 20px;
   background: linear-gradient(180deg, #111 0%, #0a0a0f 100%);
 }
 .hero h1 {
@@ -107,20 +108,32 @@ nav a:hover {
   cursor: crosshair;
 }
 
+/* 🔥 ФИКСИРОВАННАЯ ПАНЕЛЬ ВНИЗУ */
 .info-panel {
-  margin-top: 20px;
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
   background: #1a1a1a;
-  padding: 20px 30px;
-  border-radius: 12px;
+  padding: 20px 40px;
+  border-radius: 16px;
   border: 1px solid #333;
   text-align: center;
-  min-width: 300px;
+  min-width: 400px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+  z-index: 1000;
+  transition: all 0.3s ease;
 }
 .info-panel.hidden {
   display: none;
 }
 .info-panel h3 {
   color: #f5c518;
+  margin-bottom: 8px;
+}
+.info-panel p {
+  margin: 4px 0;
+  font-size: 18px;
 }
 .btn-primary {
   background: #f5c518;
@@ -147,4 +160,7 @@ nav a:hover {
   cursor: pointer;
   margin-top: 10px;
   margin-left: 10px;
+}
+.btn-secondary:hover {
+  background: #444;
 }
