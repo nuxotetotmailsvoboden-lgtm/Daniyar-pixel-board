@@ -27,23 +27,49 @@
     </div>
   </section>
 
-  <!-- Канвас -->
+  <!-- Контейнер с канвасом и управлением -->
   <section class="board-container">
     <div class="controls">
       <button id="zoomIn">➕</button>
       <button id="zoomOut">➖</button>
       <button id="resetView">⟲ Сброс</button>
     </div>
+
+    <!-- Загрузка изображения -->
+    <div class="upload-area">
+      <label for="imageUpload" class="btn-upload">📤 Загрузить логотип</label>
+      <input type="file" id="imageUpload" accept="image/png,image/jpeg,image/webp" />
+      <div id="imageInfo" class="image-info hidden">
+        <span id="imgName"></span> ( <span id="imgWidth"></span> × <span id="imgHeight"></span> px )
+        <span id="maxSizeInfo" style="color:#f5c518; margin-left:10px;">Макс. площадь: <span id="maxArea"></span> px²</span>
+      </div>
+    </div>
+
     <div class="canvas-wrapper">
       <canvas id="pixelCanvas" width="1000" height="1000"></canvas>
     </div>
-    <!-- Инфо-панель при выборе -->
+
+    <!-- Панель управления выделением (фиксированная внизу) -->
     <div id="infoPanel" class="info-panel hidden">
-      <h3>Выбрана область</h3>
-      <p id="infoSize">Размер: 0 x 0</p>
-      <p id="infoPrice">Цена: 0 ₸</p>
-      <button id="buyBtn" class="btn-primary">Купить</button>
-      <button id="cancelBtn" class="btn-secondary">Отмена</button>
+      <div class="panel-row">
+        <div class="panel-col">
+          <h3>Ваша реклама</h3>
+          <p>Координаты: <span id="infoCoords">0, 0</span></p>
+          <p>Размер: <span id="infoSize">0 × 0</span></p>
+          <p>Площадь: <span id="infoPixels">0</span> px²</p>
+          <p>Цена: <span id="infoPrice">0</span> ₸</p>
+        </div>
+        <div class="panel-col edit-area">
+          <label>Ширина: <input type="number" id="editWidth" min="10" step="1" /></label>
+          <label>Высота: <input type="number" id="editHeight" min="10" step="1" /></label>
+          <button id="applySizeBtn" class="btn-small">Применить</button>
+          <span id="sizeWarning" style="color:#ff6b6b; display:none;">Превышен лимит 3x!</span>
+        </div>
+      </div>
+      <div class="panel-actions">
+        <button id="buyBtn" class="btn-primary">Купить</button>
+        <button id="cancelBtn" class="btn-secondary">Отмена</button>
+      </div>
     </div>
   </section>
 
