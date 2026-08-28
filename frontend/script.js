@@ -19,18 +19,7 @@ const infoCoords = document.getElementById('infoCoords');
 const editWidth = document.getElementById('editWidth');
 const editHeight = document.getElementById('editHeight');
 const sizeWarning = document.getElementById('sizeWarning');
-
-// Демо-реклама (с картинками-эмодзи)
-const DEMO_ADS = [
-  { id: 1, x: 10, y: 10, width: 80, height: 80, image_url: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f37a.png', target_url: 'https://www.instagram.com/cocacola_kz', title: 'Coca-Cola' },
-  { id: 2, x: 150, y: 150, width: 100, height: 70, image_url: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f37b.png', target_url: 'https://www.instagram.com/pepsi', title: 'Pepsi' },
-  { id: 3, x: 500, y: 400, width: 120, height: 120, image_url: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f3a5.png', target_url: 'https://www.youtube.com', title: 'YouTube' },
-  { id: 4, x: 70, y: 250, width: 60, height: 60, image_url: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f4bb.png', target_url: 'https://github.com', title: 'GitHub' },
-  { id: 5, x: 350, y: 200, width: 90, height: 90, image_url: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f3c8.png', target_url: 'https://www.instagram.com/nike', title: 'Nike' },
-  { id: 6, x: 750, y: 600, width: 130, height: 80, image_url: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f34e.png', target_url: 'https://www.apple.com', title: 'Apple' },
-];
-
-const imageCache = {};
+const adUrlInput = document.getElementById('adUrl');
 
 // --- ЗАГРУЗКА ЛОГОТИПА ---
 document.getElementById('imageUpload').addEventListener('change', function(e) {
@@ -52,7 +41,6 @@ document.getElementById('imageUpload').addEventListener('change', function(e) {
       document.getElementById('maxArea').textContent = maxAllowedPixels;
       document.getElementById('imageInfo').classList.remove('hidden');
 
-      // Создаём выделение в центре с пропорциями картинки (не больше 200x200)
       let w = Math.min(originalImgWidth, 200);
       let h = Math.min(originalImgHeight, 200);
       if (w < 20) w = 20;
@@ -76,33 +64,23 @@ document.getElementById('imageUpload').addEventListener('change', function(e) {
 
 // --- ОСНОВНЫЕ ФУНКЦИИ ---
 async function fetchBoard() {
-  ads = DEMO_ADS;
-  await loadAllImages();
+  try {
+    const res = await fetch('http://localhost:3000/api/board');
+    if (!res.ok) throw new Error('Сервер не отвечает');
+    const data = await res.json();
+    ads = data.map(ad => ({
+      ...ad,
+      image_url: ad.image_data, // сервер отдаёт base64
+      target_url: ad.target_url,
+      title: ad.title || 'Реклама'
+    }));
+  } catch (e) {
+    console.warn('Не удалось загрузить данные с сервера, используем демо:', e);
+    // если сервер недоступен, можно оставить пустой массив
+    ads = [];
+  }
   updateProgress();
   drawBoard();
-}
-
-function loadAllImages() {
-  return new Promise((resolve) => {
-    let loaded = 0;
-    const total = ads.filter(ad => ad.image_url).length;
-    if (total === 0) { resolve(); return; }
-    ads.forEach(ad => {
-      if (!ad.image_url) return;
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        imageCache[ad.image_url] = img;
-        loaded++;
-        if (loaded === total) resolve();
-      };
-      img.onerror = () => {
-        loaded++;
-        if (loaded === total) resolve();
-      };
-      img.src = ad.image_url;
-    });
-  });
 }
 
 function drawBoard() {
@@ -122,13 +100,22 @@ function drawBoard() {
     ctx.stroke();
   }
 
-  // Рисуем постоянные рекламные блоки
+  // Рисуем рекламные блоки
   ads.forEach(ad => {
-    const img = imageCache[ad.image_url];
+    // Для отображения используем image_data (base64), загружаем в кеш при необходимости
+    let img = null;
+    if (ad.image_url && !ad._img) {
+      const imgObj = new Image();
+      imgObj.src = ad.image_url;
+      ad._img = imgObj;
+      img = imgObj;
+    } else if (ad._img) {
+      img = ad._img;
+    }
     drawAdBlock(ctx, ad.x, ad.y, ad.width, ad.height, img, ad.title, ad.target_url);
   });
 
-  // Рисуем выделение пользователя (если есть)
+  // Рисуем выделение пользователя
   if (selectedArea) {
     const x = Math.min(selectedArea.startX, selectedArea.endX);
     const y = Math.min(selectedArea.startY, selectedArea.endY);
@@ -139,7 +126,6 @@ function drawBoard() {
     const clampedW = Math.min(w, BOARD_SIZE - clampedX);
     const clampedH = Math.min(h, BOARD_SIZE - clampedY);
 
-    // Если есть загруженное изображение, показываем его с яркой подсветкой
     if (uploadedImage) {
       ctx.save();
       ctx.shadowColor = 'rgba(255, 215, 0, 0.8)';
@@ -163,16 +149,12 @@ function drawBoard() {
       }
       ctx.drawImage(uploadedImage, dx, dy, drawW, drawH);
       ctx.restore();
-
-      // Рамка с анимацией (пульсирующая)
       ctx.shadowBlur = 0;
       ctx.strokeStyle = '#f5c518';
       ctx.lineWidth = 4;
       ctx.setLineDash([8, 6]);
       ctx.strokeRect(clampedX, clampedY, clampedW, clampedH);
       ctx.setLineDash([]);
-
-      // Подпись "Ваш логотип"
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
       ctx.fillRect(clampedX, clampedY, clampedW, 30);
       ctx.fillStyle = '#fff';
@@ -181,7 +163,6 @@ function drawBoard() {
       ctx.textBaseline = 'middle';
       ctx.fillText('⭐ Ваш логотип здесь', clampedX + clampedW/2, clampedY + 15);
     } else {
-      // Если нет картинки – просто синяя заливка
       ctx.fillStyle = 'rgba(30, 144, 255, 0.25)';
       ctx.fillRect(clampedX, clampedY, clampedW, clampedH);
       ctx.strokeStyle = '#1e90ff';
@@ -193,7 +174,6 @@ function drawBoard() {
   }
 }
 
-// Рисование рекламного блока (как демо)
 function drawAdBlock(ctx, x, y, w, h, img, title, url) {
   ctx.shadowColor = 'rgba(0,0,0,0.5)';
   ctx.shadowBlur = 15;
@@ -213,7 +193,7 @@ function drawAdBlock(ctx, x, y, w, h, img, title, url) {
   ctx.quadraticCurveTo(x, y, x + radius, y);
   ctx.closePath();
 
-  if (img) {
+  if (img && img.complete && img.naturalWidth > 0) {
     ctx.save();
     ctx.clip();
     const imgRatio = img.width / img.height;
@@ -257,7 +237,7 @@ function drawAdBlock(ctx, x, y, w, h, img, title, url) {
   ctx.fillText(`${w}×${h}`, x + 4, y + h - 26);
 }
 
-// --- ОБНОВЛЕНИЕ ПАНЕЛИ ---
+// --- ПАНЕЛЬ ---
 function updateInfoPanel() {
   if (!selectedArea) {
     infoPanel.classList.add('hidden');
@@ -296,7 +276,7 @@ function updateInfoPanel() {
   infoPanel.classList.remove('hidden');
 }
 
-// --- ОБРАБОТЧИКИ МЫШИ ---
+// --- МЫШЬ ---
 canvas.addEventListener('mousedown', (e) => {
   const rect = canvas.getBoundingClientRect();
   const scaleX = canvas.width / rect.width;
@@ -305,7 +285,6 @@ canvas.addEventListener('mousedown', (e) => {
   const mouseX = (e.clientX - rect.left) * scaleX;
   const mouseY = (e.clientY - rect.top) * scaleY;
 
-  // Проверяем клик по существующей рекламе
   const clickedAd = ads.find(ad => 
     mouseX >= ad.x && mouseX <= ad.x + ad.width &&
     mouseY >= ad.y && mouseY <= ad.y + ad.height
@@ -315,7 +294,6 @@ canvas.addEventListener('mousedown', (e) => {
     return;
   }
 
-  // Начинаем выделение (если нет загруженной картинки, то просто синяя рамка)
   selectedArea = { startX: mouseX, endX: mouseX, startY: mouseY, endY: mouseY };
   isSelecting = true;
 });
@@ -358,7 +336,7 @@ canvas.addEventListener('mouseleave', () => {
   }
 });
 
-// --- РЕДАКТИРОВАНИЕ РАЗМЕРА ---
+// --- РЕДАКТИРОВАНИЕ ---
 document.getElementById('applySizeBtn').addEventListener('click', () => {
   if (!selectedArea) return;
   let newW = parseInt(editWidth.value);
@@ -388,8 +366,8 @@ document.getElementById('applySizeBtn').addEventListener('click', () => {
   drawBoard();
 });
 
-// --- КНОПКА "Купить" (теперь размещает рекламу!) ---
-document.getElementById('buyBtn').addEventListener('click', () => {
+// --- КУПИТЬ (отправка на сервер) ---
+document.getElementById('buyBtn').addEventListener('click', async () => {
   if (!selectedArea) return;
   const x = Math.min(selectedArea.startX, selectedArea.endX);
   const y = Math.min(selectedArea.startY, selectedArea.endY);
@@ -402,47 +380,71 @@ document.getElementById('buyBtn').addEventListener('click', () => {
   const pixels = clampedW * clampedH;
   const price = pixels * 10;
 
-  // Если загружено изображение – размещаем его как постоянную рекламу
-  if (uploadedImage) {
-    // Проверяем пересечение с существующими блоками
-    const conflict = ads.some(ad => 
-      ad.x < clampedX + clampedW && ad.x + ad.width > clampedX &&
-      ad.y < clampedY + clampedH && ad.y + ad.height > clampedY
-    );
-    if (conflict) {
-      alert('❌ Эта область уже занята! Выберите другое место.');
-      return;
+  if (!uploadedImage) {
+    alert('Сначала загрузите изображение!');
+    return;
+  }
+
+  const targetUrl = adUrlInput.value.trim();
+  if (!targetUrl) {
+    alert('Введите ссылку (URL) для рекламы!');
+    return;
+  }
+
+  // Конвертируем изображение в base64 (data URL)
+  const imageData = uploadedImage.src; // уже data URL
+
+  // Отправляем на сервер
+  try {
+    const response = await fetch('http://localhost:3000/api/ads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        x: clampedX,
+        y: clampedY,
+        width: clampedW,
+        height: clampedH,
+        image_data: imageData,
+        target_url: targetUrl,
+        title: 'Моя реклама' // позже дадим ввести
+      })
+    });
+
+    if (!response.ok) {
+      const errData = await response.json();
+      if (response.status === 409) {
+        alert(`❌ Область занята! ${errData.error || ''}`);
+        return;
+      } else {
+        throw new Error(errData.error || 'Ошибка сервера');
+      }
     }
 
-    // Создаём новый рекламный блок
-    const newAd = {
-      id: Date.now(),
-      x: clampedX,
-      y: clampedY,
-      width: clampedW,
-      height: clampedH,
-      image_url: uploadedImage.src, // data URL (позже заменим на серверный URL)
-      target_url: 'https://example.com', // пока заглушка
-      title: 'Моя реклама'
+    const newAd = await response.json();
+    // Добавляем в локальный массив
+    const adToShow = {
+      ...newAd,
+      image_url: newAd.image_data,
+      _img: uploadedImage
     };
-    ads.push(newAd);
-    // Кешируем картинку
-    imageCache[newAd.image_url] = uploadedImage;
-    // Сбрасываем выделение и состояние
+    ads.push(adToShow);
+    // Сброс
     selectedArea = null;
     uploadedImage = null;
     document.getElementById('imageInfo').classList.add('hidden');
     document.getElementById('imageUpload').value = '';
+    adUrlInput.value = '';
     infoPanel.classList.add('hidden');
     updateProgress();
     drawBoard();
-    alert('✅ Реклама успешно размещена! Кликните на неё, чтобы перейти по ссылке (пока example.com).');
-  } else {
-    alert(`✅ Вы выбрали ${pixels} пикселей (${clampedW}×${clampedH}) за ${price.toLocaleString()} ₸.\nЗагрузите изображение, чтобы разместить рекламу.`);
+    alert('✅ Реклама успешно сохранена на сервере!');
+  } catch (e) {
+    alert('❌ Ошибка при сохранении: ' + e.message);
+    console.error(e);
   }
 });
 
-// --- КНОПКА "Отмена" ---
+// --- ОТМЕНА ---
 document.getElementById('cancelBtn').addEventListener('click', () => {
   selectedArea = null;
   infoPanel.classList.add('hidden');
@@ -473,5 +475,5 @@ function updateProgress() {
   document.getElementById('progressFill').style.width = (sold / totalPixels * 100) + '%';
 }
 
-// СТАРТ
+// --- ЗАПУСК ---
 fetchBoard();
