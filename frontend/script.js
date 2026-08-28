@@ -6,12 +6,11 @@ const BOARD_SIZE = 1000;
 let ads = [];
 let selectedArea = null;
 let isSelecting = false;
-let uploadedImage = null;        // объект Image
-let originalImgWidth = 0;
-let originalImgHeight = 0;
-let maxAllowedPixels = 0;        // 3 * (originalWidth * originalHeight)
+let uploadedImage = null;
+let originalImgWidth = 0, originalImgHeight = 0;
+let maxAllowedPixels = 0;
 
-// DOM-элементы
+// DOM
 const infoPanel = document.getElementById('infoPanel');
 const infoSize = document.getElementById('infoSize');
 const infoPrice = document.getElementById('infoPrice');
@@ -21,7 +20,7 @@ const editWidth = document.getElementById('editWidth');
 const editHeight = document.getElementById('editHeight');
 const sizeWarning = document.getElementById('sizeWarning');
 
-// Демо-данные с картинками (эмодзи)
+// Демо-реклама (с картинками-эмодзи)
 const DEMO_ADS = [
   { id: 1, x: 10, y: 10, width: 80, height: 80, image_url: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f37a.png', target_url: 'https://www.instagram.com/cocacola_kz', title: 'Coca-Cola' },
   { id: 2, x: 150, y: 150, width: 100, height: 70, image_url: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f37b.png', target_url: 'https://www.instagram.com/pepsi', title: 'Pepsi' },
@@ -31,10 +30,9 @@ const DEMO_ADS = [
   { id: 6, x: 750, y: 600, width: 130, height: 80, image_url: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f34e.png', target_url: 'https://www.apple.com', title: 'Apple' },
 ];
 
-// Кеш загруженных картинок для демо
 const imageCache = {};
 
-// --- ЗАГРУЗКА КАРТИНКИ ПОЛЬЗОВАТЕЛЕМ ---
+// --- ЗАГРУЗКА ЛОГОТИПА ---
 document.getElementById('imageUpload').addEventListener('change', function(e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -48,27 +46,22 @@ document.getElementById('imageUpload').addEventListener('change', function(e) {
       originalImgHeight = img.height;
       maxAllowedPixels = 3 * (originalImgWidth * originalImgHeight);
 
-      // Показываем информацию
       document.getElementById('imgName').textContent = file.name;
       document.getElementById('imgWidth').textContent = originalImgWidth;
       document.getElementById('imgHeight').textContent = originalImgHeight;
       document.getElementById('maxArea').textContent = maxAllowedPixels;
       document.getElementById('imageInfo').classList.remove('hidden');
 
-      // Автоматически создаём выделение с размерами, пропорциональными картинке
-      // но не больше 200x200 для удобства, и не меньше 20x20
+      // Создаём выделение в центре с пропорциями картинки (не больше 200x200)
       let w = Math.min(originalImgWidth, 200);
       let h = Math.min(originalImgHeight, 200);
       if (w < 20) w = 20;
       if (h < 20) h = 20;
-      // Сохраняем пропорции
       const ratio = originalImgWidth / originalImgHeight;
       if (w / h > ratio) w = h * ratio;
       else h = w / ratio;
       w = Math.round(w);
       h = Math.round(h);
-
-      // Центрируем выделение на канвасе (например, в центре)
       const startX = Math.round((BOARD_SIZE - w) / 2);
       const startY = Math.round((BOARD_SIZE - h) / 2);
       selectedArea = { startX, endX: startX + w, startY, endY: startY + h };
@@ -78,7 +71,6 @@ document.getElementById('imageUpload').addEventListener('change', function(e) {
     img.src = ev.target.result;
   };
   reader.readAsDataURL(file);
-  // Сбрасываем input, чтобы можно было загрузить повторно
   e.target.value = '';
 });
 
@@ -130,7 +122,7 @@ function drawBoard() {
     ctx.stroke();
   }
 
-  // Рисуем демо-рекламу
+  // Рисуем постоянные рекламные блоки
   ads.forEach(ad => {
     const img = imageCache[ad.image_url];
     drawAdBlock(ctx, ad.x, ad.y, ad.width, ad.height, img, ad.title, ad.target_url);
@@ -142,21 +134,19 @@ function drawBoard() {
     const y = Math.min(selectedArea.startY, selectedArea.endY);
     const w = Math.abs(selectedArea.endX - selectedArea.startX);
     const h = Math.abs(selectedArea.endY - selectedArea.startY);
-
-    // Ограничим координаты
     const clampedX = Math.max(0, Math.min(x, BOARD_SIZE));
     const clampedY = Math.max(0, Math.min(y, BOARD_SIZE));
     const clampedW = Math.min(w, BOARD_SIZE - clampedX);
     const clampedH = Math.min(h, BOARD_SIZE - clampedY);
 
-    // Если есть загруженное изображение, показываем его в выделении
+    // Если есть загруженное изображение, показываем его с яркой подсветкой
     if (uploadedImage) {
-      // Сохраняем контекст, обрезаем по выделению
       ctx.save();
+      ctx.shadowColor = 'rgba(255, 215, 0, 0.8)';
+      ctx.shadowBlur = 30;
       ctx.beginPath();
       ctx.rect(clampedX, clampedY, clampedW, clampedH);
       ctx.clip();
-      // Рисуем картинку с масштабированием cover
       const imgRatio = uploadedImage.width / uploadedImage.height;
       const blockRatio = clampedW / clampedH;
       let drawW, drawH, dx, dy;
@@ -173,23 +163,37 @@ function drawBoard() {
       }
       ctx.drawImage(uploadedImage, dx, dy, drawW, drawH);
       ctx.restore();
-    } else {
-      // Если нет картинки, просто заливка
-      ctx.fillStyle = 'rgba(30, 144, 255, 0.2)';
-      ctx.fillRect(clampedX, clampedY, clampedW, clampedH);
-    }
 
-    // Рамка выделения
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = '#1e90ff';
-    ctx.lineWidth = 3;
-    ctx.setLineDash([6, 4]);
-    ctx.strokeRect(clampedX, clampedY, clampedW, clampedH);
-    ctx.setLineDash([]);
+      // Рамка с анимацией (пульсирующая)
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = '#f5c518';
+      ctx.lineWidth = 4;
+      ctx.setLineDash([8, 6]);
+      ctx.strokeRect(clampedX, clampedY, clampedW, clampedH);
+      ctx.setLineDash([]);
+
+      // Подпись "Ваш логотип"
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(clampedX, clampedY, clampedW, 30);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('⭐ Ваш логотип здесь', clampedX + clampedW/2, clampedY + 15);
+    } else {
+      // Если нет картинки – просто синяя заливка
+      ctx.fillStyle = 'rgba(30, 144, 255, 0.25)';
+      ctx.fillRect(clampedX, clampedY, clampedW, clampedH);
+      ctx.strokeStyle = '#1e90ff';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([6, 4]);
+      ctx.strokeRect(clampedX, clampedY, clampedW, clampedH);
+      ctx.setLineDash([]);
+    }
   }
 }
 
-// Вспомогательная функция для рисования рекламного блока
+// Рисование рекламного блока (как демо)
 function drawAdBlock(ctx, x, y, w, h, img, title, url) {
   ctx.shadowColor = 'rgba(0,0,0,0.5)';
   ctx.shadowBlur = 15;
@@ -238,7 +242,6 @@ function drawAdBlock(ctx, x, y, w, h, img, title, url) {
   ctx.lineWidth = 2;
   ctx.strokeRect(x, y, w, h);
 
-  // Подпись
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
   ctx.fillRect(x, y + h - 24, w, 24);
   ctx.fillStyle = '#fff';
@@ -276,11 +279,9 @@ function updateInfoPanel() {
   infoPixels.textContent = pixels;
   infoPrice.textContent = price.toLocaleString();
 
-  // Заполняем поля редактирования
   editWidth.value = Math.round(clampedW);
   editHeight.value = Math.round(clampedH);
 
-  // Проверка ограничения 3x, если есть загруженное изображение
   if (uploadedImage) {
     const maxArea = maxAllowedPixels;
     if (pixels > maxArea) {
@@ -314,7 +315,7 @@ canvas.addEventListener('mousedown', (e) => {
     return;
   }
 
-  // Начинаем выделение
+  // Начинаем выделение (если нет загруженной картинки, то просто синяя рамка)
   selectedArea = { startX: mouseX, endX: mouseX, startY: mouseY, endY: mouseY };
   isSelecting = true;
 });
@@ -365,7 +366,6 @@ document.getElementById('applySizeBtn').addEventListener('click', () => {
   if (isNaN(newW) || newW < 1) newW = 10;
   if (isNaN(newH) || newH < 1) newH = 10;
   
-  // Ограничение 3x, если загружено изображение
   if (uploadedImage) {
     const area = newW * newH;
     if (area > maxAllowedPixels) {
@@ -376,10 +376,8 @@ document.getElementById('applySizeBtn').addEventListener('click', () => {
     }
   }
 
-  // Применяем новый размер, сохраняя левый верхний угол
   const x = Math.min(selectedArea.startX, selectedArea.endX);
   const y = Math.min(selectedArea.startY, selectedArea.endY);
-  // Проверяем, чтобы не выходило за границы
   const clampedW = Math.min(newW, BOARD_SIZE - Math.round(x));
   const clampedH = Math.min(newH, BOARD_SIZE - Math.round(y));
   selectedArea.endX = Math.round(x) + clampedW;
@@ -390,7 +388,7 @@ document.getElementById('applySizeBtn').addEventListener('click', () => {
   drawBoard();
 });
 
-// --- КНОПКИ "Купить" и "Отмена" ---
+// --- КНОПКА "Купить" (теперь размещает рекламу!) ---
 document.getElementById('buyBtn').addEventListener('click', () => {
   if (!selectedArea) return;
   const x = Math.min(selectedArea.startX, selectedArea.endX);
@@ -403,11 +401,48 @@ document.getElementById('buyBtn').addEventListener('click', () => {
   const clampedH = Math.round(Math.min(h, BOARD_SIZE - clampedY));
   const pixels = clampedW * clampedH;
   const price = pixels * 10;
-  
-  alert(`✅ Вы выбрали ${pixels} пикселей (${clampedW}×${clampedH}) за ${price.toLocaleString()} ₸.\nПереходим к оплате...`);
-  // Здесь будет отправка данных на сервер
+
+  // Если загружено изображение – размещаем его как постоянную рекламу
+  if (uploadedImage) {
+    // Проверяем пересечение с существующими блоками
+    const conflict = ads.some(ad => 
+      ad.x < clampedX + clampedW && ad.x + ad.width > clampedX &&
+      ad.y < clampedY + clampedH && ad.y + ad.height > clampedY
+    );
+    if (conflict) {
+      alert('❌ Эта область уже занята! Выберите другое место.');
+      return;
+    }
+
+    // Создаём новый рекламный блок
+    const newAd = {
+      id: Date.now(),
+      x: clampedX,
+      y: clampedY,
+      width: clampedW,
+      height: clampedH,
+      image_url: uploadedImage.src, // data URL (позже заменим на серверный URL)
+      target_url: 'https://example.com', // пока заглушка
+      title: 'Моя реклама'
+    };
+    ads.push(newAd);
+    // Кешируем картинку
+    imageCache[newAd.image_url] = uploadedImage;
+    // Сбрасываем выделение и состояние
+    selectedArea = null;
+    uploadedImage = null;
+    document.getElementById('imageInfo').classList.add('hidden');
+    document.getElementById('imageUpload').value = '';
+    infoPanel.classList.add('hidden');
+    updateProgress();
+    drawBoard();
+    alert('✅ Реклама успешно размещена! Кликните на неё, чтобы перейти по ссылке (пока example.com).');
+  } else {
+    alert(`✅ Вы выбрали ${pixels} пикселей (${clampedW}×${clampedH}) за ${price.toLocaleString()} ₸.\nЗагрузите изображение, чтобы разместить рекламу.`);
+  }
 });
 
+// --- КНОПКА "Отмена" ---
 document.getElementById('cancelBtn').addEventListener('click', () => {
   selectedArea = null;
   infoPanel.classList.add('hidden');
