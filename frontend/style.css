@@ -8,7 +8,7 @@ body {
   background: #0a0a0f;
   color: #fff;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  padding-bottom: 120px; /* чтобы панель не перекрывала контент */
+  padding-bottom: 180px; /* больше места для панели */
 }
 
 header {
@@ -36,7 +36,7 @@ nav a:hover {
 
 .hero {
   text-align: center;
-  padding: 40px 20px 20px;
+  padding: 30px 20px 15px;
   background: linear-gradient(180deg, #111 0%, #0a0a0f 100%);
 }
 .hero h1 {
@@ -52,7 +52,7 @@ nav a:hover {
 }
 .stats {
   max-width: 400px;
-  margin: 20px auto;
+  margin: 10px auto;
 }
 .progress-bar {
   width: 100%;
@@ -92,6 +92,40 @@ nav a:hover {
   background: #333;
 }
 
+.upload-area {
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.btn-upload {
+  background: #f5c518;
+  color: #111;
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.btn-upload:hover {
+  background: #ffd700;
+}
+#imageUpload {
+  display: none;
+}
+.image-info {
+  background: #1a1a1a;
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: 1px solid #333;
+  font-size: 14px;
+}
+.image-info.hidden {
+  display: none;
+}
+
 .canvas-wrapper {
   background: #111;
   border: 2px solid #333;
@@ -108,43 +142,88 @@ nav a:hover {
   cursor: crosshair;
 }
 
-/* 🔥 ФИКСИРОВАННАЯ ПАНЕЛЬ ВНИЗУ */
+/* Фиксированная панель */
 .info-panel {
   position: fixed;
   bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
   background: #1a1a1a;
-  padding: 20px 40px;
+  padding: 20px 30px;
   border-radius: 16px;
   border: 1px solid #333;
-  text-align: center;
-  min-width: 400px;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.9);
   z-index: 1000;
-  transition: all 0.3s ease;
+  min-width: 600px;
+  max-width: 90%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
 }
 .info-panel.hidden {
   display: none;
 }
-.info-panel h3 {
-  color: #f5c518;
-  margin-bottom: 8px;
+.panel-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: center;
+  width: 100%;
 }
-.info-panel p {
-  margin: 4px 0;
+.panel-col {
+  flex: 1;
+  min-width: 150px;
+}
+.panel-col h3 {
+  color: #f5c518;
+  margin-bottom: 4px;
   font-size: 18px;
+}
+.panel-col p {
+  margin: 2px 0;
+  font-size: 15px;
+}
+.edit-area label {
+  display: inline-block;
+  margin-right: 10px;
+  font-size: 14px;
+}
+.edit-area input[type="number"] {
+  width: 60px;
+  padding: 4px;
+  background: #222;
+  border: 1px solid #444;
+  color: #fff;
+  border-radius: 4px;
+}
+.btn-small {
+  background: #444;
+  color: #fff;
+  border: none;
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.btn-small:hover {
+  background: #555;
+}
+.panel-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  justify-content: flex-end;
 }
 .btn-primary {
   background: #f5c518;
   color: #111;
   border: none;
-  padding: 12px 30px;
+  padding: 10px 25px;
   border-radius: 8px;
   font-weight: 700;
   font-size: 16px;
   cursor: pointer;
-  margin-top: 10px;
 }
 .btn-primary:hover {
   background: #ffd700;
@@ -153,14 +232,15 @@ nav a:hover {
   background: #333;
   color: #fff;
   border: none;
-  padding: 12px 30px;
+  padding: 10px 25px;
   border-radius: 8px;
   font-weight: 700;
   font-size: 16px;
   cursor: pointer;
-  margin-top: 10px;
-  margin-left: 10px;
 }
 .btn-secondary:hover {
   background: #444;
+}
+#sizeWarning {
+  font-size: 13px;
 }
